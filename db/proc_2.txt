@@ -1,0 +1,37 @@
+CREATE PROCEDURE `executebill`(IN entityid MEDIUMINT, IN BSD VARCHAR(10), IN BED VARCHAR(10), IN VRNO MEDIUMINT)
+BEGIN
+	DECLARE instid MEDIUMINT;	
+	DECLARE bildate DATE;	
+	DECLARE exit_loop BOOLEAN;
+		
+	DECLARE billget_cus CURSOR for
+	select distinct e.ent_inst_id  , STR_TO_DATE(BSD,'%Y-%m-%d')	
+	from ent_inst_tr e, ent_inst_prod_tr p
+	where e.ent_inst_id = p.ent_inst_id
+	and e.entity_id = entityid	
+	and e.ent_ins_sts = '3'
+	and p.ent_prod_ins_sts = '3'
+	and e.ent_inst_st_dt <= STR_TO_DATE(BED,'%Y-%m-%d')
+	and e.ent_inst_ed_dt >= STR_TO_DATE(BSD,'%Y-%m-%d')
+	and p.ent_inst_st_dt <= STR_TO_DATE(BED,'%Y-%m-%d')
+	and p.ent_inst_ed_dt >= STR_TO_DATE(BSD,'%Y-%m-%d');
+	
+	
+	DECLARE CONTINUE HANDLER FOR NOT FOUND SET exit_loop = TRUE;
+	OPEN billget_cus;
+	
+	bilget_loop: LOOP
+		FETCH billget_cus INTO instid,bildate;
+		
+		
+		INSERT INTO bill_gen (bill_gen_id,ent_inst_id,bill_dt,last_mod,ent_vr_nr)
+		VALUES (NULL, instid, bildate,SYSDATE(), VRNO); 
+		
+		IF exit_loop THEN
+			CLOSE billget_cus;
+			LEAVE bilget_loop;
+		END IF;
+
+	END LOOP bilget_loop;	
+	
+END$$
